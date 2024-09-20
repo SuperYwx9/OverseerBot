@@ -4,6 +4,18 @@ from config import settings
 from subprocess import Popen
 from mcstatus import JavaServer
 from numdeclination import NumDeclination
+import time
+
+
+intents = discord.Intents.default()
+intents.message_content = True
+
+
+server = JavaServer.lookup("127.0.0.1:25565")
+bot = commands.Bot(command_prefix=settings['prefix'], intents=intents, help_command=None)
+nd = NumDeclination()
+
+cooldown = False
 
 
 def isServerOnline():
@@ -12,15 +24,6 @@ def isServerOnline():
     return True
   except:
     return False
-
-nd = NumDeclination()
-
-intents = discord.Intents.default()
-intents.message_content = True
-
-
-server = JavaServer.lookup("127.0.0.1:25565")
-bot = commands.Bot(command_prefix=settings['prefix'], intents=intents)
 
 @bot.event
 async def on_ready():
@@ -41,46 +44,74 @@ async def status(ctx):
     if isServerOnline():
         status = server.status()
         embed = discord.Embed(colour=discord.Color.green())
-        embed.add_field(name="Сервер включён", value=f"В данный момент на сервере {status.players.online} {nd.declinate(status.players.online,["игрок", "игрока", "игроков" ]).word} онлайн")
+        embed.add_field(name="Сервер включён.", value=f"В данный момент на сервере {status.players.online} {nd.declinate(status.players.online,["игрок", "игрока", "игроков" ]).word} онлайн.")
         await ctx.send(embed=embed)
-        await ctx.message.delete()
+        #await ctx.message.delete()
     else:
         embed = discord.Embed(colour=discord.Color.red())
-        embed.add_field(name="Сервер выключен", value="=(")
+        embed.add_field(name="Сервер выключен.", value="Для запуска используй команду !start")
         await ctx.send(embed=embed)
-        await ctx.message.delete()
+        #await ctx.message.delete()
 
 @bot.command()
 async def list(ctx):
     if not isServerOnline():
         embed = discord.Embed(colour=discord.Color.red())
-        embed.add_field(name="Сервер выключен", value="=(")
+        embed.add_field(name="Сервер выключен.", value="Для запуска используй команду !start")
         await ctx.send(embed=embed)
-        await ctx.message.delete()
+        #await ctx.message.delete()
         return
     query = server.query()
     if query.players.names:
         embed = discord.Embed(colour=discord.Color.green())
-        embed.add_field(name="Игроки онлайн:", value=f"{", " .join(query.players.names)}")
+        embed.add_field(name="Игроки онлайн:", value=f"{", " .join(query.players.names)}.")
         await ctx.send(embed=embed)
-        await ctx.message.delete()
-        print("Игроки онлайн:", ", ".join(query.players.names))
+        #await ctx.message.delete()
     else:
         status = server.status()
 
         if not status.players.sample:
-            embed = discord.Embed(colour=discord.Color.yellow())  # ,color=Hex code
-            embed.add_field(name="Нет игроков на сервере", value="=/")
+            embed = discord.Embed(colour=discord.Color.yellow())
+            embed.add_field(name="Нет игроков на сервере.", value="Зайди первым!")
             await ctx.send(embed=embed)
-            await ctx.message.delete()
+            #await ctx.message.delete()
         else:
             a = ("Игроки онлайн: "+", ".join([player.name for player in status.players.sample]))
             await ctx.send(a)
-            await ctx.message.delete()
+            #await ctx.message.delete()
 
 @bot.command()
+async def help(ctx):
+    embed = discord.Embed(title="Команды бота", colour=discord.Color.blue())
+    embed.add_field(name="!start или !run", value="Запускает сервер, если он выключен.")
+    embed.add_field(name="!status", value="Отображает статус сервера. Если сервер запущен, отображает количество игроков на нём.")
+    embed.add_field(name="!list", value="Отображает список игроков на сервере на текущий момент.")
+    await ctx.send(embed=embed)
+    #await ctx.message.delete()
+
+@bot.command(aliases=['run'])
 async def start(ctx):
-    Popen("start run.bat", shell=True)
+    global cooldown
+    serverOnline = isServerOnline()
+    if not serverOnline and not cooldown:
+        cooldown = True
+        embed = discord.Embed(colour=discord.Color.green())
+        embed.add_field(name="Сервер", value="Сервер запускается. Примерное время запуска 15-20 секунд.")
+        await ctx.send(embed=embed)
+        #await ctx.message.delete()
+        Popen("start run.bat", shell=True)
+        time.sleep(30)
+        cooldown = False
+    elif not serverOnline and cooldown:
+        embed = discord.Embed(colour=discord.Color.yellow())
+        embed.add_field(name="Сервер", value="Команда запуска сервера уже запущена. Ожидайте 30 секунд.")
+        await ctx.send(embed=embed)
+        #await ctx.message.delete()
+    elif serverOnline:
+        embed = discord.Embed(colour=discord.Color.red())
+        embed.add_field(name="Сервер", value="Сервер уже запущен.")
+        await ctx.send(embed=embed)
+        #await ctx.message.delete()
 
 
 bot.run(settings['token'])
