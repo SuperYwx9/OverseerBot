@@ -4,7 +4,7 @@ from config import settings
 from subprocess import Popen
 from mcstatus import JavaServer
 from numdeclination import NumDeclination
-import time
+from asyncio import sleep
 
 
 intents = discord.Intents.default()
@@ -100,7 +100,7 @@ async def start(ctx):
         await ctx.send(embed=embed)
         #await ctx.message.delete()
         Popen("start run.bat", shell=True)
-        time.sleep(30)
+        await sleep(30)
         cooldown = False
     elif not serverOnline and cooldown:
         embed = discord.Embed(colour=discord.Color.yellow())
